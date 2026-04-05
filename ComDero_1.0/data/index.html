@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Eventos</title>
+  <style>
+    body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+    h1 { color: #333; }
+    form, table { background: white; padding: 20px; border-radius: 8px; }
+    input[type="number"], input[type="submit"] {
+      padding: 10px; margin: 5px 0;
+    }
+    table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #ddd; padding: 10px; }
+    button { background-color: #e74c3c; color: white; border: none; padding: 6px 12px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <h1 id="clock">--:--:--</h1>
+  <script>
+    async function updateTime() {
+      const res = await fetch('/api/time');
+      const data = await res.json();
+      document.getElementById('clock').innerText = data.time;
+    }
+    setInterval(updateTime, 1000);
+  </script>
+
+  <h1>Eventos Programados</h1>
+
+  <form id="eventoForm">
+    <label>Hora: <input type="number" name="hora" min="0" max="23" required></label><br>
+    <label>Minuto: <input type="number" name="minuto" min="0" max="59" required></label><br>
+    <label>Gramos: <input type="number" name="gramos" required></label><br>
+    <input type="submit" value="Guardar Evento">
+  </form>
+<h2>Control manual</h2>
+<div>
+  <label for="gramosSlider">gramos: <span id="pasoValor">100</span></label><br>
+  <input type="range" id="gramosSlider" min="100" max="20000" value="100" step="100">
+  <br><br>
+  <button onclick="moverGramos()">OK</button>
+  <button onclick="reproducirSonido()">Reproducir sonido</button>
+  <button onclick="Aplause_s()">Dar por aplauso</button>
+  <button onclick="Press_s()">Dar por pulsador</button>
+</div>
+  <h2>Lista de eventos</h2>
+  <table id="tablaEventos">
+    <thead><tr><th>Hora</th><th>Minuto</th><th>Gramos</th><th>Acciones</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+
+  const slider = document.getElementById("gramosSlider");
+  const pasoValor = document.getElementById("pasoValor");
+  slider.addEventListener("input", () => {
+    pasoValor.textContent = slider.value;
+  });
+
+  async function moverGramos() {
+    const gramos = slider.value;
+    await fetch("/mover_manual?gramos=" + gramos);
+  }
+
+  async function Aplause_s() {
+    await fetch("Aplause_s");
+  }
+
+  async function Press_s() {
+    await fetch("/Press_s");
+  }
+
+  async function reproducirSonido() {
+    await fetch("/sonido");
+  }
+    async function cargarEventos() {
+      const res = await fetch('/eventos.json');
+      const eventos = await res.json();
+      const tbody = document.querySelector('#tablaEventos tbody');
+      tbody.innerHTML = '';
+      eventos.forEach((e, index) => {
+        const fila = document.createElement('tr');
+        fila.innerHTML = `
+          <td>${e.hora}</td>
+          <td>${e.minuto}</td>
+          <td>${e.pasos}</td>
+          <td><button onclick="eliminarEvento(${index})">Eliminar</button></td>
+        `;
+        tbody.appendChild(fila);
+      });
+    }
+
+    async function eliminarEvento(id) {
+      await fetch('/eliminar?id=' + id);
+      cargarEventos();
+    }
+
+    document.getElementById('eventoForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const datos = new FormData(e.target);
+      const json = JSON.stringify({
+        hora: parseInt(datos.get('hora')),
+        minuto: parseInt(datos.get('minuto')),
+        pasos: parseInt(datos.get('pasos'))
+      });
+
+      await fetch('/guardar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: json
+      });
+
+      e.target.reset();
+      cargarEventos();
+    });
+
+    cargarEventos();
+  </script>
+</body>
+</html>
